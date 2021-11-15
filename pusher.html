@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+
+<head>
+  <title>Pusher Test</title>
+  <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
+  <script src="/pusher.elm.js"></script>
+  <script>
+
+    // elm make src/Pusher.elm --output=pusher.elm.js --optimize
+
+    // Enable pusher logging - don't include this in production
+    Pusher.logToConsole = true;
+
+    function cb() {
+      var pusher = new Pusher('83301c9b5a9e5ad71ee6', {
+        cluster: 'eu',
+        authEndpoint: "http://localhost:8080/pusher/auth",
+        authTransport: "ajax"
+      });
+
+      var channel = pusher.subscribe('private-my-channel');
+      channel.bind('my-event', function (data) {
+        alert(JSON.stringify(data));
+      });
+    }
+
+    // cb();
+
+  </script>
+  <link rel="stylesheet" href="/assets/css/pusher.css">
+</head>
+
+<body>
+  <h1>Pusher Test</h1>
+  <div id="myapp">
+    <div id="my_app"></div>
+  </div>
+  <script>
+    var app = Elm.Pusher.init({
+      node: document.getElementById('my_app'),
+      flags: {"channel_name": 8954238}
+    });
+    app.ports.askForConfirmation.subscribe(function () {
+      app.ports.confirmations.send(window.confirm())
+    });
+  </script>
+  <p>
+    Try publishing an event to channel <code>my-channel</code>
+    with event name <code>my-event</code>.
+  </p>
+</body>
