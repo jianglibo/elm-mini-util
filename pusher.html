@@ -11,17 +11,8 @@
     // Enable pusher logging - don't include this in production
     Pusher.logToConsole = true;
 
-    function cb() {
-      var pusher = new Pusher('83301c9b5a9e5ad71ee6', {
-        cluster: 'eu',
-        authEndpoint: "http://localhost:8080/pusher/auth",
-        authTransport: "ajax"
-      });
+    function cb(channel_name) {
 
-      var channel = pusher.subscribe('private-my-channel');
-      channel.bind('my-event', function (data) {
-        alert(JSON.stringify(data));
-      });
     }
 
     // cb();
@@ -38,14 +29,35 @@
   <script>
     var app = Elm.Pusher.init({
       node: document.getElementById('my_app'),
-      flags: {"channel_name": 8954238}
+      flags: { cpsyc_url: "http://localhost:8080" }
     });
-    app.ports.askForConfirmation.subscribe(function () {
-      app.ports.confirmations.send(window.confirm())
+
+    app.ports.subscribeToPusher.subscribe(function (channel_name) {
+      var pusher = new Pusher('83301c9b5a9e5ad71ee6', {
+        cluster: 'eu',
+        authEndpoint: "http://localhost:8080/pusher/auth",
+        authTransport: "ajax"
+      });
+
+      var socketId = null;
+      pusher.connection.bind("connected", () => {
+        socketId = pusher.connection.socket_id;
+        app.ports.socketIdAcquired.send(socketId);
+      });
+
+      var channel = pusher.subscribe('private-' + channel_name);
+      channel.bind('my-event', function (data) {
+        app.ports.eventFromPusher.send(data);
+      });
     });
+
+
+    if (app.ports && app.ports.askForConfirmation) {
+      app.ports.askForConfirmation.subscribe(function () {
+        app.ports.confirmations.send(window.confirm())
+      });
+    }
   </script>
   <p>
-    Try publishing an event to channel <code>my-channel</code>
-    with event name <code>my-event</code>.
   </p>
 </body>
