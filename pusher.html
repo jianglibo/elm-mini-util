@@ -27,12 +27,18 @@
     <div id="my_app"></div>
   </div>
   <script>
+    console.log("hash: " + window.location.hash);
     var app = Elm.Pusher.init({
       node: document.getElementById('my_app'),
-      flags: { cpsyc_url: "http://localhost:8080" }
+      flags: { 
+        cpsyc_url: "http://localhost:8080",
+        channel_name: window.location.hash 
+       }
     });
 
     app.ports.subscribeToPusher.subscribe(function (channel_name) {
+      window.location.hash = '#' + channel_name;
+      console.log("about to subscribe to " + channel_name);
       var pusher = new Pusher('83301c9b5a9e5ad71ee6', {
         cluster: 'eu',
         authEndpoint: "http://localhost:8080/pusher/auth",
@@ -42,12 +48,27 @@
       var socketId = null;
       pusher.connection.bind("connected", () => {
         socketId = pusher.connection.socket_id;
+        console.log("got socket_id " + socketId);
         app.ports.socketIdAcquired.send(socketId);
-      });
 
-      var channel = pusher.subscribe('private-' + channel_name);
-      channel.bind('my-event', function (data) {
-        app.ports.eventFromPusher.send(data);
+        var en = 'private-' + channel_name;
+        var channel = pusher.subscribe(en);
+
+        // channel.bind("pusher:subscribe", function(data) {
+        //   console.log("subscribe success: " + JSON.stringify(data));
+        // });
+
+        channel.bind("pusher:subscription_succeeded", function(data) {
+          console.log("subscribe success: " + JSON.stringify(data));
+        });
+
+        channel.bind("contentUpdated", function (data) {
+          // Method to be dispatched on trigger.
+          // receive contentUpdated: {"socket_id":"133991.35181545","content":"123"}
+          console.log("receive contentUpdated: " + JSON.stringify(data));
+          app.ports.remoteContentUpdated.send(data);
+        });
+
       });
     });
 

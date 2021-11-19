@@ -1,6 +1,6 @@
 module Util exposing (..)
 
-import Expect exposing (Expectation)
+import Expect
 import Pusher.ChannelNameUtil as Util
 import Test exposing (..)
 

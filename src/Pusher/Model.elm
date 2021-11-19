@@ -2,6 +2,7 @@ module Pusher.Model exposing (Model, isChannelNameEmpty, isChannelNameFull, allN
 
 import Pusher.ChannelNameUtil exposing(pickoutNumber)
 import Time
+import Pusher.Dto exposing (RemoteContentUpldateEvent)
 
 -- MODEL
 
@@ -15,6 +16,7 @@ type alias Model =
     , last_saved_value: String
     , socket_id: String
     , channel_name_done: Bool
+    , last_content_update_event: Maybe RemoteContentUpldateEvent
     }
 
 isChannelNameEmpty: Model -> Bool

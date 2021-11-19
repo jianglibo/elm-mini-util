@@ -6,9 +6,16 @@ import Html.Attributes exposing (disabled, style, value)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as D
-import Json.Encode as E exposing (Value)
+import Json.Encode as E
 import Pusher.ChannelNameUtil as Util
-import Pusher.Dto exposing (ChannelData, channelDataDecoder, cpsycUrlDecoder)
+import Pusher.Dto
+    exposing
+        ( ChannelData
+        , RemoteContentUpldateEvent
+        , channelDataDecoder
+        , initValueDecoder
+        , remoteContentUpdateEventDecoder
+        )
 import Pusher.Model exposing (Model, isChannelNameEmpty)
 import Time
 
@@ -49,7 +56,7 @@ main =
 port subscribeToPusher : String -> Cmd msg
 
 
-port eventFromPusher : (String -> msg) -> Sub msg
+port remoteContentUpdated : (E.Value -> msg) -> Sub msg
 
 
 port socketIdAcquired : (String -> msg) -> Sub msg
@@ -63,19 +70,31 @@ port confirmations : (Bool -> msg) -> Sub msg
 
 init : D.Value -> ( Model, Cmd Msg )
 init flags =
-    case D.decodeValue cpsycUrlDecoder flags of
-        Ok url ->
-            ( { cpsyc_url = url
-              , channel_name = ""
+    case D.decodeValue initValueDecoder flags of
+        Ok initValue ->
+            ( { cpsyc_url = initValue.cpsyc_url
+              , channel_name = initValue.channel_name
               , content = ""
               , last_saved_value = ""
               , error_msg = ""
               , time = Time.millisToPosix 0
               , socket_id = ""
               , channel_name_done = False
+              , last_content_update_event = Nothing
               }
               -- Model url "" "ccc" "" (Time.millisToPosix 0)
-            , Cmd.none
+            , let
+                allNumberCode =
+                    Util.pickoutNumber initValue.channel_name
+              in
+              if (allNumberCode |> String.length) == channelNameLength then
+                Http.get
+                    { url = Util.buildChannelQueryUrl initValue.cpsyc_url allNumberCode
+                    , expect = Http.expectJson ReturnChannelData channelDataDecoder
+                    }
+
+              else
+                Cmd.none
             )
 
         Err err ->
@@ -87,6 +106,7 @@ init flags =
               , time = Time.millisToPosix 0
               , socket_id = ""
               , channel_name_done = False
+              , last_content_update_event = Nothing
               }
               --   Model "" "" "" (D.errorToString err) (Time.millisToPosix 0)
             , Cmd.none
@@ -103,6 +123,7 @@ type Msg
     | Tick Time.Posix
     | PostContentReturn (Result Http.Error String)
     | SocketIdAcquired String
+    | RemoteContentUpdated (Result D.Error RemoteContentUpldateEvent)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -195,6 +216,7 @@ update msg model =
                             (E.object
                                 [ ( "content", E.string model.content )
                                 , ( "socket_id", E.string model.socket_id )
+                                , ( "id", E.string model.channel_name )
                                 ]
                             )
                     , expect = Http.expectString PostContentReturn
@@ -210,7 +232,7 @@ update msg model =
             case pcr of
                 Ok s ->
                     if String.isEmpty s then
-                        ( model, Cmd.none )
+                        ( { model | error_msg = "" }, Cmd.none )
 
                     else
                         ( { model | error_msg = s }, Cmd.none )
@@ -223,6 +245,30 @@ update msg model =
             , Cmd.none
             )
 
+        RemoteContentUpdated contentUpdateResult ->
+            case contentUpdateResult of
+                Ok v ->
+                    ( { model
+                        | last_content_update_event = Just v
+                        , content =
+                            if v.socket_id == model.socket_id then
+                                model.content
+
+                            else
+                                v.content
+                        , last_saved_value = v.content
+                      }
+                    , Cmd.none
+                    )
+
+                Err err ->
+                    ( { model
+                        | error_msg = D.errorToString err
+                        , last_content_update_event = Nothing
+                      }
+                    , Cmd.none
+                    )
+
 
 
 -- VIEW
@@ -230,14 +276,44 @@ update msg model =
 
 view : Model -> H.Html Msg
 view model =
+    let
+        ev =
+            case model.last_content_update_event of
+                Just e ->
+                    E.encode 0
+                        (E.object
+                            [ ( "socket_id", E.string e.socket_id )
+                            , ( "content", E.string e.content )
+                            ]
+                        )
+
+                Nothing ->
+                    ""
+    in
     H.div []
-        [ H.input [ onInput EnteringChannelName, disabled model.channel_name_done, value model.channel_name ] [ H.text model.channel_name ]
-        , H.button [ onClick DoClicked, style "margin-left" "5px", disabled model.channel_name_done ] [ H.text "Do" ]
+        [ H.input
+            [ onInput EnteringChannelName
+            , disabled model.channel_name_done
+            , value model.channel_name
+            ]
+            [ H.text model.channel_name ]
+        , H.button
+            [ onClick DoClicked
+            , style "margin-left" "5px"
+            , disabled model.channel_name_done
+            ]
+            [ H.text "Do" ]
         , H.span [ style "margin-left" "10px", style "color" "red", style "font-weight" "bold" ] [ H.text model.error_msg ]
         , H.p [] [ H.text "Connect to an existing channel by entering the code. OR, Click the Do to request a new channel." ]
-        , H.p [] [ H.text model.content ]
-        , H.p [] [ H.text (model.time |> Time.posixToMillis |> String.fromInt) ]
-        , H.textarea [ onInput ContentChanged, value model.content ] [ H.text model.content ]
+
+        -- , H.p [] [ H.text ev ]
+        -- , H.p [] [ H.text (model.time |> Time.posixToMillis |> String.fromInt) ]
+        , H.textarea
+            [ onInput ContentChanged
+            , value model.content
+            , disabled (not model.channel_name_done)
+            ]
+            [ H.text model.content ]
         ]
 
 
@@ -251,6 +327,6 @@ subscriptions _ =
     Sub.batch
         [ confirmations (\_ -> NoOp)
         , socketIdAcquired SocketIdAcquired
-        , eventFromPusher (\_ -> NoOp)
+        , remoteContentUpdated (\v -> RemoteContentUpdated (D.decodeValue remoteContentUpdateEventDecoder v))
         , Time.every 1000 Tick
         ]

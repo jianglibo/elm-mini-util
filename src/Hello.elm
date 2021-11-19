@@ -1,7 +1,6 @@
 module Hello exposing (..)
 
 import Html exposing (text)
-import Json.Decode as D
 
 a : number
 a = 1
@@ -21,7 +20,7 @@ type alias  User =
     }
 
 -- record constructor
-u = User "a" 1
+-- u = User "a" 1
 
 -- decode
 

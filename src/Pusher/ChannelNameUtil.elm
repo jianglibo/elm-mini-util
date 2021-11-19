@@ -3,7 +3,6 @@ module Pusher.ChannelNameUtil exposing (..)
 import Http
 import Set exposing (Set)
 import Url.Builder as UrlBuilder
-import List exposing (length)
 
 
 buildChannelQueryUrl : String -> String -> String
