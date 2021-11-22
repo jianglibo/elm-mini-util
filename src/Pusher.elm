@@ -219,6 +219,7 @@ update msg model =
                                 [ ( "content", E.string model.content )
                                 , ( "socket_id", E.string model.socket_id )
                                 , ( "id", E.string model.channel_name )
+                                , ( "force", E.bool False )
                                 ]
                             )
                     , expect = Http.expectString PostContentReturn
@@ -253,10 +254,11 @@ update msg model =
                     ( { model
                         | last_content_update_event = Just v
                         , content =
-                            -- if v.socket_id == model.socket_id then
-                            --     model.content
-                            -- else
-                            v.content
+                            if (v.socket_id == model.socket_id) && not v.force then
+                                model.content
+
+                            else
+                                v.content
                         , last_saved_value = v.content
                       }
                     , Cmd.none

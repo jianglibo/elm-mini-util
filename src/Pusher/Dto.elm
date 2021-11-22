@@ -9,7 +9,7 @@ module Pusher.Dto exposing
     , remoteContentUpdateEventDecoder
     )
 
-import Json.Decode exposing (Decoder, field, map2, map3, string)
+import Json.Decode exposing (Decoder, bool, field, map2, map3, string)
 import Json.Encode as E
 
 
@@ -58,6 +58,7 @@ channelPostDataEncoder channelPostData =
         [ ( "id", E.string channelPostData.id )
         , ( "content", E.string channelPostData.content )
         , ( "socket_id", E.string channelPostData.socket_id )
+        , ( "force", E.bool True )
         ]
 
 
@@ -71,11 +72,13 @@ channelPostDataEncoder channelPostData =
 type alias RemoteContentUpldateEvent =
     { socket_id : String
     , content : String
+    , force : Bool
     }
 
 
 remoteContentUpdateEventDecoder : Decoder RemoteContentUpldateEvent
 remoteContentUpdateEventDecoder =
-    map2 RemoteContentUpldateEvent
+    map3 RemoteContentUpldateEvent
         (field "socket_id" string)
         (field "content" string)
+        (field "force" bool)
