@@ -7,6 +7,7 @@
   <script>
 
     // elm make src/Pusher.elm --output=pusher.elm.js --optimize
+    // elm-live src/Pusher.elm --open -- --output=pusher.elm.js
 
     // Enable pusher logging - don't include this in production
     Pusher.logToConsole = true;
@@ -28,10 +29,11 @@
   </div>
   <script>
     console.log("hash: " + window.location.hash);
+    var app_host = "https://resp.me";
     var app = Elm.Pusher.init({
       node: document.getElementById('my_app'),
       flags: { 
-        cpsyc_url: "http://localhost:8080",
+        cpsyc_url: app_host,
         channel_name: window.location.hash 
        }
     });
@@ -41,7 +43,7 @@
       console.log("about to subscribe to " + channel_name);
       var pusher = new Pusher('83301c9b5a9e5ad71ee6', {
         cluster: 'eu',
-        authEndpoint: "http://localhost:8080/pusher/auth",
+        authEndpoint: app_host + "/channel/auth",
         authTransport: "ajax"
       });
 

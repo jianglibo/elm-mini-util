@@ -2,17 +2,19 @@ port module Pusher exposing (..)
 
 import Browser
 import Html as H
-import Html.Attributes exposing (disabled, style, value)
+import Html.Attributes exposing (class, disabled, style, value)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as D
 import Json.Encode as E
-import Pusher.ChannelNameUtil as Util
+import Pusher.ChannelNameUtil as Util exposing (pickoutNumber)
 import Pusher.Dto
     exposing
         ( ChannelData
+        , ChannelPostData
         , RemoteContentUpldateEvent
         , channelDataDecoder
+        , channelPostDataEncoder
         , initValueDecoder
         , remoteContentUpdateEventDecoder
         )
@@ -251,11 +253,10 @@ update msg model =
                     ( { model
                         | last_content_update_event = Just v
                         , content =
-                            if v.socket_id == model.socket_id then
-                                model.content
-
-                            else
-                                v.content
+                            -- if v.socket_id == model.socket_id then
+                            --     model.content
+                            -- else
+                            v.content
                         , last_saved_value = v.content
                       }
                     , Cmd.none
@@ -289,6 +290,9 @@ view model =
 
                 Nothing ->
                     ""
+
+        channelPostData =
+            ChannelPostData (model.channel_name |> pickoutNumber) model.content model.socket_id
     in
     H.div []
         [ H.input
@@ -314,6 +318,31 @@ view model =
             , disabled (not model.channel_name_done)
             ]
             [ H.text model.content ]
+        , H.div [ class "language-bash", class "highlighter-rouge" ]
+            [ H.div [ class "highlight" ]
+                [ H.pre [ class "highlight" ]
+                    [ H.code []
+                        [ H.text "curl https://resp.me/channel/query?channel_name"
+                        , H.span [ class "o" ] [ H.text "=" ]
+                        , H.text (model.channel_name |> pickoutNumber)
+                        ]
+                    ]
+                ]
+            ]
+        , H.div [ class "language-bash", class "highlighter-rouge" ]
+            [ H.div [ class "highlight" ]
+                [ H.pre [ class "highlight" ]
+                    [ H.code []
+                        [ H.text "curl "
+                        , H.span [ class "s1" ] [ H.text "'https://resp.me/channel/post'" ]
+                        , H.span [ class "nt" ] [ H.text " -H " ]
+                        , H.span [ class "s1" ] [ H.text "'Content-Type: application/json'" ]
+                        , H.span [ class "nt" ] [ H.text " --data-raw " ]
+                        , H.span [ class "s1" ] [ H.text ("'" ++ E.encode 0 (channelPostDataEncoder channelPostData) ++ "'") ]
+                        ]
+                    ]
+                ]
+            ]
         ]
 
 
