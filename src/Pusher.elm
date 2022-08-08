@@ -324,7 +324,7 @@ view model =
             [ H.div [ class "highlight" ]
                 [ H.pre [ class "highlight" ]
                     [ H.code []
-                        [ H.text "curl https://resp.me/channel/query?channel_name"
+                        [ H.text ("curl " ++ model.cpsyc_url ++ "/channel/query?channel_name")
                         , H.span [ class "o" ] [ H.text "=" ]
                         , H.text (model.channel_name |> pickoutNumber)
                         ]
@@ -336,7 +336,7 @@ view model =
                 [ H.pre [ class "highlight" ]
                     [ H.code []
                         [ H.text "curl "
-                        , H.span [ class "s1" ] [ H.text "'https://resp.me/channel/post'" ]
+                        , H.span [ class "s1" ] [ H.text ("'" ++ model.cpsyc_url ++ "/channel/post'") ]
                         , H.span [ class "nt" ] [ H.text " -H " ]
                         , H.span [ class "s1" ] [ H.text "'Content-Type: application/json'" ]
                         , H.span [ class "nt" ] [ H.text " --data-raw " ]
